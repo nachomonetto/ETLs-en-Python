@@ -8,7 +8,7 @@ port = 1521
 SID = 'XE'
 dsn_tns = cx_Oracle.makedsn(ip, port, SID)
 
-connection = cx_Oracle.connect('SYSTEM', 'password', dsn_tns)
+connection = cx_Oracle.connect('SYSTEM', 'Password', dsn_tns)
 
 #Query origen
 query_ora_PICKLIST_DATA = """SELECT
@@ -35,8 +35,9 @@ left_sistema_origen=df_sistema_origen_cd_added.set_index(['SISTEMA_ORIGEN_CD'])
 right_sistema_origen=df_ora_D_SISTEMA_ORIGEN.set_index(['SISTEMA_ORIGEN_CD'])
 
 join_sistema_origen=left_sistema_origen.join(right_sistema_origen).reset_index().drop(columns=['SISTEMA_ORIGEN_CD'])
+join_sistema_origen.head()
 
-campos_renombrados=join_sistema_origen.rename(columns={'OPTIONID':'ACTIVIDAD_CD','ES_ES':'ACTIVIDAD_DE'})
+campos_renombrados=join_sistema_origen.rename(columns={'OPTIONID':'ACTIVIDAD_CD','ES_ES':'ACTIVIDAD_DE','EXTERNAL_CODE':'CODIGO_EXTERNO_CD'})
 
 campos_renombrados.head()
 
@@ -49,7 +50,8 @@ df_ora_D_PROCESO = pd.read_sql(query_ora_D_PROCESO, con=connection)
 left_PROCESO=campos_renombrados.set_index(['PARENTOPTIONID'])
 right_PROCESO=df_ora_D_PROCESO.set_index(['PARENTOPTIONID'])
 
-join_PROCESO=left_PROCESO.join(right_PROCESO).reset_index().drop(columns=['PARENTOPTIONID'])
+join_PROCESO=left_PROCESO.join(right_PROCESO).reset_index()
+join_PROCESO['PROCESO_ID']=join_PROCESO.PROCESO_ID.fillna(-3)
 join_PROCESO.head()
 
 #Query para traerme el máximo subrogado en D_ACTIVIDAD
@@ -60,8 +62,6 @@ query_ora_MAX_SKG_D_ACTIVIDAD = """SELECT
                                             WHERE
                                             ACTIVIDAD_ID >0"""         
 df_ora_MAX_SKG_D_ACTIVIDAD = pd.read_sql(query_ora_MAX_SKG_D_ACTIVIDAD, con=connection)
-df_ora_MAX_SKG_D_ACTIVIDAD.head()
-
 max_skg=df_ora_MAX_SKG_D_ACTIVIDAD.iloc[0,0]
 max_skg
 
@@ -100,27 +100,13 @@ df_insert_flag_existe['LOTE_CARGA']=1
 df_insert_flag_existe['LOTE_ACTUALIZACION']=1
 df_insert=df_insert_flag_existe[['ACTIVIDAD_ID','ACTIVIDAD_CD','ACTIVIDAD_DE','CODIGO_EXTERNO_CD','PROCESO_ID','SISTEMA_ORIGEN_ID','LOTE_CARGA','LOTE_ACTUALIZACION']]
 df_insert.head()
+
 #Escenario update
 df_update_flag_existe=df_proceso_id.loc[(df_proceso_id.FLAG_EXISTE.notnull()) & ((df_proceso_id.ACTIVIDAD_DE!=df_proceso_id.ACTIVIDAD_DE_REF) | (df_proceso_id.CODIGO_EXTERNO_CD!=df_proceso_id.CODIGO_EXTERNO_CD_REF) | (df_proceso_id.PROCESO_ID!=df_proceso_id.PROCESO_ID_REF))]
 df_update_flag_existe=df_update_flag_existe.rename(columns={'ACTIVIDAD_ID_REF':'ACTIVIDAD_ID'})
 df_update_flag_existe['LOTE_ACTUALIZACION']=2
 df_update=df_update_flag_existe[['ACTIVIDAD_DE','CODIGO_EXTERNO_CD','PROCESO_ID','LOTE_ACTUALIZACION','ACTIVIDAD_ID']]
 df_update.head()
-
-#Me conecto a la BD para hacer insert
-if len(df_insert)>0:    
-    cursor_insert = connection.cursor()
-
-    sql_insert='insert into D_ACTIVIDAD (ACTIVIDAD_ID,ACTIVIDAD_CD,ACTIVIDAD_DE,SISTEMA_ORIGEN_ID,LOTE_CARGA,LOTE_ACTUALIZACION) values(:1,:2,:3,:4,:5,:6)'
-    df_list_insert = df_insert.values.tolist()
-    n = 0
-    for i in df_insert.iterrows():
-        cursor_insert.execute(sql_insert,df_list_insert[n])
-        n += 1
-
-    connection.commit()
-print('Se insertaron: '+str(len(df_insert))+' registros.')
-df_insert.head()
 
 #Me conecto a la BD para hacer insert
 if len(df_insert)>0:    
