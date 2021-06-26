@@ -5,4 +5,4 @@ Aquí se almacenan scripts .py para la realización de procesos ETL en Python. L
 3) Eventuales cruces con otras tablas a través de relaciones PK-FK.
 4) Generación de subrogados.
 5) Detección de novedades (registros nuevos) o cambios de valores existentes. En otras palabras, existen un escenario de insert, y un escenario de update.
-6) Insert y/o Update en tabla en BD Oracle (Data Warehouse).
+6) Insert y/o Update en tabla de BD Oracle (Data Warehouse).
